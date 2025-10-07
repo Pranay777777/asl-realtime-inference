@@ -1,0 +1,16 @@
+tensorflow-intel==2.16.1
+opencv-contrib-python==4.11.0.86
+numpy==1.26.4
+scipy==1.16.2
+scikit-learn==1.5.2
+matplotlib==3.10.6
+Pillow==11.3.0
+
+# Optional features (already used by your project)
+mediapipe==0.10.14
+ml-dtypes==0.3.2
+jax==0.4.28
+jaxlib==0.4.28
+
+# Testing
+pytest==8.4.2

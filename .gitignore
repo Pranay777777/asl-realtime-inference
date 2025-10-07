@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+
+# Virtual env
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Data & artifacts
+data/**
+!data/.gitkeep
+models/**
+!models/.gitkeep
+
+# Generated
+*.h5
+*.npy
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.gif
+debug_roi.jpg
