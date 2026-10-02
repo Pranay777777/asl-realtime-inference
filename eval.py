@@ -1,81 +1,89 @@
-import argparse
-import json
+# eval.py
+import argparse, json, math
 from pathlib import Path
+
+import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from tensorflow import keras
-import matplotlib.pyplot as plt
-import numpy as np
 
-def make_valid_flow(data_dir: Path, img_size, batch_size, val_split, labels_path):
-    # Load class names from labels.json
-    with open(labels_path, "r") as f:
-        class_names = json.load(f)
-
-    datagen = keras.preprocessing.image.ImageDataGenerator(validation_split=val_split)
-    val_flow = datagen.flow_from_directory(
-        str(data_dir),
-        target_size=img_size,
-        batch_size=batch_size,
-        class_mode="categorical",
-        shuffle=False,
-        subset="validation",
-        classes=class_names,  # Force class order from labels.json
-    )
-    return val_flow, class_names
+def load_class_names(labels_path: Path):
+    # labels.json is {"0":"A","1":"B",...}; force index order
+    labels = json.loads(labels_path.read_text())
+    idx_to_label = {int(k): v for k, v in labels.items()}
+    return [idx_to_label[i] for i in range(len(idx_to_label))]
 
 def plot_confusion(cm, class_names, out_png):
-    plt.figure(figsize=(10, 8))
-    plt.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
-    plt.title("Confusion Matrix")
+    fig = plt.figure(figsize=(10, 8))
+    plt.imshow(cm, interpolation="nearest")
+    plt.title("Confusion Matrix (Validation)")
     plt.colorbar()
-    tick_marks = np.arange(len(class_names))
-    plt.xticks(tick_marks, class_names, rotation=45)
-    plt.yticks(tick_marks, class_names)
-    plt.ylabel("True label")
-    plt.xlabel("Predicted label")
-    plt.savefig(out_png)
-    plt.close()
+    ticks = np.arange(len(class_names))
+    plt.xticks(ticks, class_names, rotation=90)
+    plt.yticks(ticks, class_names)
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.tight_layout()
+    fig.savefig(out_png, dpi=180, bbox_inches="tight")
+    plt.close(fig)
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--model_path", type=str, required=True, help="Path to the trained model (.keras)")
-    p.add_argument("--labels_path", type=str, required=True, help="Path to labels.json")
-    p.add_argument("--data_dir", type=str, required=True, help="Path to validation dataset")
-    p.add_argument("--batch_size", type=int, default=128)
-    p.add_argument("--img_size", nargs=2, type=int, default=[160, 160])
-    p.add_argument("--val_split", type=float, default=0.10)
-    args = p.parse_args()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model_path", type=str, required=True)
+    ap.add_argument("--labels_path", type=str, required=True)
+    ap.add_argument("--data_dir", type=str, required=True)
+    ap.add_argument("--out_dir", type=str, default="models")
+    ap.add_argument("--img_size", nargs=2, type=int, default=[160, 160])
+    ap.add_argument("--batch_size", type=int, default=128)
+    ap.add_argument("--val_split", type=float, default=0.10)
+    ap.add_argument("--letters_only", type=lambda s: str(s).lower() != "false", default=True)
+    args = ap.parse_args()
 
-    # Paths
-    model_path = Path(args.model_path)
-    labels_path = Path(args.labels_path)
     data_dir = Path(args.data_dir)
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load model
-    model = keras.models.load_model(model_path)
-    print(f"[INFO] Loaded model from {model_path}")
+    # Load model & labels
+    model = keras.models.load_model(args.model_path)
+    class_names = load_class_names(Path(args.labels_path))
 
-    # Validation dataset
-    img_size = tuple(args.img_size)
-    val_flow, class_names = make_valid_flow(data_dir, img_size, args.batch_size, args.val_split, labels_path)
+    # IMPORTANT: no rescale here (model has Rescaling to [-1,1] inside)
+    datagen = keras.preprocessing.image.ImageDataGenerator(validation_split=args.val_split)
 
-    # Predictions
-    y_true = val_flow.classes
-    y_pred = model.predict(val_flow, verbose=1)
-    y_pred = np.argmax(y_pred, axis=1)
+    flow = datagen.flow_from_directory(
+        directory=str(data_dir),
+        target_size=tuple(args.img_size),
+        batch_size=args.batch_size,
+        class_mode="categorical",
+        subset="validation",
+        shuffle=False,
+        classes=class_names,      # exact same order as labels.json
+    )
 
-    # Metrics
-    cm = confusion_matrix(y_true, y_pred)
-    report = classification_report(y_true, y_pred, target_names=class_names)
-    accuracy = accuracy_score(y_true, y_pred)
+    # Run once over validation
+    y_true_idx, y_pred_idx = [], []
+    steps_total = int(np.ceil(flow.samples / flow.batch_size))
+    for _ in range(steps_total):
+        x, y = next(flow)
+        preds = model.predict(x, verbose=0)
+        y_true_idx.extend(np.argmax(y, axis=1))
+        y_pred_idx.extend(np.argmax(preds, axis=1))
 
-    # Save results
-    out_dir = model_path.parent
-    with open(out_dir / "val_report.txt", "w") as f:
-        f.write(report)
+    y_true_idx = np.array(y_true_idx)
+    y_pred_idx = np.array(y_pred_idx)
+
+    acc = accuracy_score(y_true_idx, y_pred_idx)
+    cm  = confusion_matrix(y_true_idx, y_pred_idx, labels=list(range(len(class_names))))
+    report = classification_report(
+        y_true_idx, y_pred_idx, target_names=class_names, digits=3, zero_division=0
+    )
+
     np.save(out_dir / "confusion_matrix.npy", cm)
+    with open(out_dir / "val_report.txt", "w", encoding="utf-8") as f:
+        f.write(f"Overall accuracy: {acc:.4f}\n\n")
+        f.write(report)
     plot_confusion(cm, class_names, out_dir / "confusion_matrix.png")
 
-    # Print overall accuracy
-    print(f"[INFO] Overall accuracy: {accuracy:.4f}")
-    print(f"[DONE] Results saved to {out_dir}")
+    print(f"[EVAL] Overall accuracy: {acc:.4f}")
+    print(f"[EVAL] Saved: {out_dir/'val_report.txt'}")
+    print(f"[EVAL] Saved: {out_dir/'confusion_matrix.png'}")

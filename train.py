@@ -273,17 +273,13 @@ else:
         for l in base.layers[:args.fine_tune_at]:
             l.trainable = False
 
-        # Lower LR for fine-tuning
-        # Lower LR for fine-tuning (explicit kw args + metric object)
         optimizer_ft = keras.optimizers.Adam(learning_rate=float(args.lr) * 0.1)
         loss_ft = keras.losses.CategoricalCrossentropy(label_smoothing=float(args.label_smoothing))
-
         model.compile(
             optimizer=optimizer_ft,
             loss=loss_ft,
             metrics=[keras.metrics.CategoricalAccuracy(name="accuracy")]
         )
-
         hist2 = model.fit(
             train_ds, validation_data=val_ds,
             epochs=args.freeze_epochs + args.fine_tune_epochs,
@@ -292,6 +288,5 @@ else:
         )
 
     model.save(out_dir / "model.keras")
-
     print("[DONE] Model saved to", out_dir / "model.keras")
     print("[DONE] Labels saved to", out_dir / "labels.json")

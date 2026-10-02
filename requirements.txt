@@ -14,3 +14,5 @@ jaxlib==0.4.28
 
 # Testing
 pytest==8.4.2
+
+protobuf==3.20.3
