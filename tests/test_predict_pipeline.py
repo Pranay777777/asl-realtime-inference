@@ -9,4 +9,5 @@ def test_preprocess_frame_shapes():
     assert out is not None
     assert out.shape == (1, 64, 64, 3)
     assert out.dtype == np.float32
-    assert 0.0 <= out.min() <= out.max() <= 1.0
+    # 0..255 on purpose: the model rescales inside (Rescaling layer in build_model)
+    assert 0.0 <= out.min() <= out.max() <= 255.0

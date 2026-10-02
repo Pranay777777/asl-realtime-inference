@@ -255,15 +255,15 @@ if __name__ == "__main__":
         print("[INFO] Class weights:", class_weight)
 
     # -------- Phase 1: train head with backbone frozen --------
-if args.freeze_epochs > 0:
-    print("[TRAIN] Phase 1: frozen backbone")
-    hist1 = model.fit(
-        train_ds, validation_data=val_ds,
-        epochs=args.freeze_epochs, callbacks=callbacks,
-        class_weight=class_weight, verbose=1,
-    )
-else:
-    print("[TRAIN] Skipping Phase 1 (freeze_epochs=0)")
+    if args.freeze_epochs > 0:
+        print("[TRAIN] Phase 1: frozen backbone")
+        hist1 = model.fit(
+            train_ds, validation_data=val_ds,
+            epochs=args.freeze_epochs, callbacks=callbacks,
+            class_weight=class_weight, verbose=1,
+        )
+    else:
+        print("[TRAIN] Skipping Phase 1 (freeze_epochs=0)")
 
 
     # -------- Phase 2: fine-tune part of the backbone --------
