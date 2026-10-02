@@ -1,0 +1,4 @@
+onnxruntime==1.30.0
+mediapipe==0.10.14
+opencv-python-headless==4.11.0.86
+numpy==1.26.4
