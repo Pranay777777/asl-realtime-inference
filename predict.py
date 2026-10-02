@@ -7,6 +7,7 @@ import math
 import cv2
 import numpy as np
 from tensorflow import keras
+
 import mediapipe as mp
 
 
@@ -47,6 +48,24 @@ def preprocess_frame(frame, roi, img_size, *, use_clahe=True, use_skin_mask=Fals
     return np.expand_dims(arr, axis=0)
 
 
+def load_calibration(path):
+    """(temperature, abstain threshold) from inference/calibrate.py, or (1.0, None)."""
+    p = Path(path)
+    if not p.exists():
+        return 1.0, None
+    cal = json.loads(p.read_text())
+    return float(cal.get("temperature", 1.0)), float(cal["threshold"])
+
+
+def calibrated(probs, temperature):
+    """Softmax scores as if the logits were divided by the fitted temperature."""
+    if temperature == 1.0:
+        return probs
+    logits = np.log(np.clip(probs, 1e-12, 1.0)) / temperature
+    exp = np.exp(logits - logits.max(axis=-1, keepdims=True))
+    return exp / exp.sum(axis=-1, keepdims=True)
+
+
 def majority_vote(q):
     if not q:
         return None
@@ -56,10 +75,10 @@ def majority_vote(q):
 
 def make_tta_batch(arr, angles, do_flip):
     """
-    arr: (1,H,W,3) in [0,1] RGB.
-    Returns batch (N,H,W,3) with rotated (and optional flipped) variants.
+    arr: (1,H,W,3) float32 in 0..255 (no /255).
+    Returns batch (N,H,W,3) float32 in 0..255.
     """
-    img = (arr[0] * 255).astype(np.uint8)
+    img = arr[0].astype(np.uint8)  # already 0..255
     h, w = img.shape[:2]
     imgs = []
     for a in angles:
@@ -74,7 +93,6 @@ def make_tta_batch(arr, angles, do_flip):
             imgs.append(cv2.flip(rot, 1))
     batch = np.stack([x.astype(np.float32) for x in imgs], axis=0)
     return batch
-
 
 def mp_aligned_hand(frame_bgr, target_size, hands, *, pad_scale=1.4):
     """
@@ -234,7 +252,10 @@ if __name__ == "__main__":
     ap.add_argument("--camera", type=int, default=0)
     ap.add_argument("--roi", nargs=4, type=int, default=[50, 50, 224, 224], help="x y w h")
     ap.add_argument("--smooth_k", type=int, default=9)
-    ap.add_argument("--conf_thresh", type=float, default=0.40)   # confidence threshold
+    ap.add_argument("--conf_thresh", type=float, default=None,
+                    help="Abstain below this confidence (default: models/calibration.json, else 0.40)")
+    ap.add_argument("--calibration", type=str, default="models/calibration.json",
+                    help="Temperature + threshold written by inference/calibrate.py")
     ap.add_argument("--letters_only", type=lambda s: str(s).lower() != "false", default=True)
     ap.add_argument("--skin_mask", action="store_true", help="Apply HSV+YCrCb skin mask to ROI")
     ap.add_argument("--use_mediapipe", action="store_true",
@@ -272,6 +293,10 @@ if __name__ == "__main__":
     model = keras.models.load_model(args.model_path)
     idx_to_label = {int(k): v for k, v in json.loads(Path(args.labels_path).read_text()).items()}
     label_to_idx = {v: k for k, v in idx_to_label.items()}
+    temperature, cal_thresh = load_calibration(args.calibration)
+    if args.conf_thresh is None:
+        args.conf_thresh = cal_thresh if cal_thresh is not None else 0.40
+    print(f"[INFO] temperature={temperature} abstain below {args.conf_thresh:.2f}")
 
     # Auto-align image size to the model's input (None, H, W, C)
     mh, mw = model.input_shape[1:3]
@@ -290,9 +315,12 @@ if __name__ == "__main__":
         crop = img[y0:y0 + side, x0:x0 + side]
         arr = cv2.resize(crop, img_size, interpolation=cv2.INTER_AREA)
         arr = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB).astype(np.float32)
-        probs = model.predict(arr[None, ...], verbose=0)[0]
+        probs = calibrated(model.predict(arr[None, ...], verbose=0)[0], temperature)
         idx = int(np.argmax(probs))
-        print(f"Top-1: {idx_to_label[idx]} ({probs[idx] * 100:.1f}%)")
+        if probs[idx] < args.conf_thresh:
+            print(f"Not confident (best guess {idx_to_label[idx]} at {probs[idx] * 100:.1f}%)")
+        else:
+            print(f"Top-1: {idx_to_label[idx]} ({probs[idx] * 100:.1f}%)")
         raise SystemExit(0)
 
     # ---------- Webcam mode ----------
@@ -366,6 +394,7 @@ if __name__ == "__main__":
             else:
                 tta_batch = make_tta_batch(arr, args.tta_angles, args.tta_flip)
                 probs = model.predict(tta_batch, verbose=0).mean(axis=0)
+            probs = calibrated(probs, temperature)
 
             # EMA smoothing
             if probs_ema is None:
@@ -406,8 +435,10 @@ if __name__ == "__main__":
                     stable_label = pred_label
                     stable_count = 1
 
-            # Choose display label
-            if stable_count >= LOCK_FRAMES and stable_label is not None:
+            # Choose display label: below the calibrated threshold, say so instead of guessing
+            if pred_label is None and best_conf < args.conf_thresh:
+                display_label = f"Not confident ({best_conf * 100:.0f}%)"
+            elif stable_count >= LOCK_FRAMES and stable_label is not None:
                 conf_disp = float(probs[label_to_idx.get(stable_label, idx_top)])
                 display_label = f"{stable_label} ({conf_disp * 100:.0f}%)"
             elif len(recent) > 0:
@@ -457,7 +488,7 @@ if __name__ == "__main__":
             roi = (x, y, rw, rh)
         elif ch == 's':  # save current ROI for debugging
             if arr is not None:
-                dbg = (arr[0] * 255).clip(0, 255).astype(np.uint8)  # RGB HxW
+                dbg = arr[0].clip(0, 255).astype(np.uint8)  # RGB HxW, already 0..255
                 bgr = cv2.cvtColor(dbg, cv2.COLOR_RGB2BGR)
                 cv2.imwrite("debug_roi.jpg", bgr)
                 print("[DEBUG] Saved ROI to debug_roi.jpg")

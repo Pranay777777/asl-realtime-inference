@@ -1,0 +1,75 @@
+{
+  "images": 2600,
+  "data": {
+    "letters": [
+      "K",
+      "L",
+      "M",
+      "N",
+      "O",
+      "P",
+      "Q",
+      "R",
+      "S",
+      "T",
+      "U",
+      "V",
+      "W",
+      "X",
+      "Y",
+      "Z"
+    ],
+    "missing": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+      "J"
+    ],
+    "held_out": false,
+    "note": "16 of 26 letters from a local copy of the training data; may overlap training images, so accuracy is optimistic"
+  },
+  "input": "160x160",
+  "model_name": "asl_mobilenetv2",
+  "machine": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "cpus": 8,
+    "tensorflow": "2.16.1",
+    "onnxruntime": "1.26.0"
+  },
+  "rows": [
+    {
+      "variant": "Keras FP32",
+      "size_mb": 24.96,
+      "accuracy": 0.9992,
+      "p50_ms": 120.1,
+      "p95_ms": 169.22,
+      "mean_ms": 127.98,
+      "fps": 7.8
+    },
+    {
+      "variant": "ONNX FP32",
+      "size_mb": 9.04,
+      "accuracy": 0.9992,
+      "p50_ms": 2.06,
+      "p95_ms": 2.69,
+      "mean_ms": 2.12,
+      "fps": 471.1
+    },
+    {
+      "variant": "ONNX INT8",
+      "size_mb": 2.69,
+      "accuracy": 0.9996,
+      "p50_ms": 1.33,
+      "p95_ms": 1.56,
+      "mean_ms": 1.32,
+      "fps": 757.3
+    }
+  ]
+}

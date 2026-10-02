@@ -179,3 +179,17 @@ PowerShell multiline errors: prefer backticks (`) for line continuation or run c
 MediaPipe slow/missing GPU: MediaPipe runs on CPU here; if frame-rate drops, disable --use_mediapipe and keep --tta_angles short (e.g., -15 0 15).
 
 Confusable letters (X, U, S, V, E): we apply margin gating and EMA in predict.py. For more robustness, we’ll add improved training augmentations later.
+
+<!-- inference:start -->
+## Fast inference: ONNX + INT8
+
+Scored on 2600 images (16 of 26 letters from a local copy of the training data; may overlap training images, so accuracy is optimistic), input 160x160; batch size 1 on Intel64 Family 6 Model 140 Stepping 1, GenuineIntel (8 threads).
+
+| Variant | Size (MB) | Accuracy | Δ accuracy | p50 (ms) | p95 (ms) | FPS | Speed-up |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Keras FP32 | 24.96 | 99.92% | +0.00 pp | 120.1 | 169.22 | 7.8 | 1.0x |
+| ONNX FP32 | 9.04 | 99.92% | +0.00 pp | 2.06 | 2.69 | 471.1 | 60.4x |
+| ONNX INT8 | 2.69 | 99.96% | +0.04 pp | 1.33 | 1.56 | 757.3 | 97.0x |
+
+Calibrated abstain threshold 0.72: answers 100% of held-out images at 99.9% accuracy, says *not confident* otherwise. Details, limitations and how to reproduce: [MODEL_CARD.md](MODEL_CARD.md).
+<!-- inference:end -->

@@ -1,0 +1,47 @@
+{
+  "temperature": 0.397,
+  "threshold": 0.719,
+  "target_accuracy": 0.99,
+  "ece_before": 0.0717,
+  "ece_after": 0.0007,
+  "held_out": {
+    "coverage": 1.0,
+    "accepted_accuracy": 0.9992,
+    "overall_accuracy": 0.9992
+  },
+  "images": 2600,
+  "data": {
+    "letters": [
+      "K",
+      "L",
+      "M",
+      "N",
+      "O",
+      "P",
+      "Q",
+      "R",
+      "S",
+      "T",
+      "U",
+      "V",
+      "W",
+      "X",
+      "Y",
+      "Z"
+    ],
+    "missing": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+      "J"
+    ],
+    "held_out": false,
+    "note": "16 of 26 letters from a local copy of the training data; may overlap training images, so accuracy is optimistic"
+  }
+}

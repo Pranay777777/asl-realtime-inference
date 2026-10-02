@@ -1,0 +1,11 @@
+# Fast inference (steps 83-86): ONNX export, INT8 quantization, benchmark, calibration.
+# protobuf 4.25.3 satisfies tensorflow 2.16 and mediapipe (>=4.25.3,<5).
+# tf2onnx 1.16.1 declares protobuf~=3.20 but exports fine on 4.25.3, so install it
+# separately without dependencies:
+#   python -m pip install -r requirements-inference.txt
+#   python -m pip install --no-deps tf2onnx==1.16.1
+onnx==1.17.0
+onnxruntime==1.26.0
+protobuf==4.25.3
+sympy>=1.13
+pillow
