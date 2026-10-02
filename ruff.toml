@@ -1,0 +1,7 @@
+# Lint baseline for CI: real errors (pyflakes), import order, and pycodestyle errors.
+line-length = 100
+extend-exclude = ["venv", "data", "models"]
+
+[lint]
+select = ["E", "F", "I"]
+ignore = ["E501", "E701", "E702", "E741"]  # long lines and compact one-liners are the house style

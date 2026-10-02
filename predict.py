@@ -1,15 +1,14 @@
 # predict.py
-import argparse, json
-from pathlib import Path
-from collections import deque, Counter
+import argparse
+import json
 import math
+from collections import Counter, deque
+from pathlib import Path
 
 import cv2
+import mediapipe as mp
 import numpy as np
 from tensorflow import keras
-
-import mediapipe as mp
-
 
 # --------------------------- helpers ---------------------------
 

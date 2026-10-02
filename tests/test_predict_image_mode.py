@@ -1,9 +1,11 @@
-import subprocess, sys, shutil
+import subprocess
+import sys
 from pathlib import Path
+
 import pytest
 
 PREDICT = Path("predict.py")
-MODEL = Path("models/cnn_model.h5")
+MODEL = Path("models/model.keras")
 LABELS = Path("models/labels.json")
 A_DIR = Path("data/asl_alphabet/asl_alphabet_train/A")
 
@@ -13,7 +15,7 @@ def test_predict_cli_on_single_image():
     cmd = [sys.executable, str(PREDICT),
            "--model_path", str(MODEL),
            "--labels_path", str(LABELS),
-           "--img_size", "64", "64",
+           "--img_size", "160", "160",
            "--test_image", str(img)]
     cp = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     assert cp.returncode == 0, cp.stderr

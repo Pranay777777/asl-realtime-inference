@@ -1,4 +1,5 @@
-tensorflow-intel==2.16.1
+# tensorflow installs the Intel build itself on Windows; this name also works on Linux CI
+tensorflow==2.16.1
 opencv-contrib-python==4.11.0.86
 numpy==1.26.4
 scipy==1.16.2
@@ -15,4 +16,6 @@ jaxlib==0.4.28
 # Testing
 pytest==8.4.2
 
-protobuf==3.20.3
+# mediapipe 0.10.14 needs protobuf >=4.25.3,<5 (3.20.3 cannot be installed beside it);
+# tf2onnx's ~=3.20 pin is installed with --no-deps, see requirements-inference.txt
+protobuf==4.25.3

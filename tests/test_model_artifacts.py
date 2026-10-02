@@ -1,11 +1,12 @@
 import json
 from pathlib import Path
-import numpy as np
-import cv2
-from tensorflow import keras
-import pytest
 
-MODEL = Path("models/cnn_model.h5")
+import cv2
+import numpy as np
+import pytest
+from tensorflow import keras
+
+MODEL = Path("models/model.keras")
 LABELS = Path("models/labels.json")
 A_DIR = Path("data/asl_alphabet/asl_alphabet_train/A")
 
@@ -16,7 +17,7 @@ def test_single_image_inference():
     img_path = next(A_DIR.glob("*.jpg"))
     img = cv2.imread(str(img_path))
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img = cv2.resize(img, (64,64)).astype("float32")/255.0
+    img = cv2.resize(img, (160, 160)).astype("float32")  # 0..255: the model rescales inside
     preds = model.predict(img[None,...], verbose=0)[0]
     top = int(np.argmax(preds))
     assert idx_to_label[top] in [chr(i) for i in range(ord("A"), ord("Z")+1)]

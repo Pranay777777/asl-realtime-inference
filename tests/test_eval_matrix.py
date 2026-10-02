@@ -1,5 +1,5 @@
-import numpy as np
 from pathlib import Path
+
 import pytest
 
 CM = Path("models/confusion_matrix.npy")

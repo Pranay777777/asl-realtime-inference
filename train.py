@@ -1,6 +1,8 @@
 # train.py  (tf.data version; captures class_names before prefetch)
-import argparse, json
+import argparse
+import json
 from pathlib import Path
+
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras

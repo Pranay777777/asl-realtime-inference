@@ -1,5 +1,7 @@
 import numpy as np
+
 import predict  # safe: main guarded by if __name__ == "__main__"
+
 
 def test_preprocess_frame_shapes():
     # fake 480x640 frame

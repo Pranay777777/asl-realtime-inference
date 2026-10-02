@@ -20,7 +20,13 @@ import numpy as np
 
 from inference.benchmark import onnx_predictor
 from inference.data import describe, load_split
-from inference.metrics import abstain_report, choose_threshold, ece, fit_temperature, with_temperature
+from inference.metrics import (
+    abstain_report,
+    choose_threshold,
+    ece,
+    fit_temperature,
+    with_temperature,
+)
 
 
 def calibrate(probs: np.ndarray, labels: np.ndarray, target: float) -> dict[str, Any]:

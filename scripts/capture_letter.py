@@ -1,8 +1,11 @@
 # scripts/capture_letter.py
-import argparse, time
+import argparse
+import time
 from pathlib import Path
-import cv2, numpy as np
+
+import cv2
 import mediapipe as mp
+
 
 def mp_aligned_hand(frame_bgr, target_size, hands, pad_scale=1.4):
     h, w = frame_bgr.shape[:2]
