@@ -28,3 +28,9 @@ models/**
 *.bmp
 *.gif
 debug_roi.jpg
+
+# Static Space: the model and calibration are staged from models/ at deploy time, never committed
+space/static/asl_int8.onnx
+space/static/calibration.json
+space/node_modules/
+space/.stage/

@@ -1,0 +1,8 @@
+{
+  "name": "asl-space-parity",
+  "private": true,
+  "description": "Headless Chromium for space/parity.py (Python vs browser pipeline)",
+  "devDependencies": {
+    "@playwright/test": "1.55.0"
+  }
+}

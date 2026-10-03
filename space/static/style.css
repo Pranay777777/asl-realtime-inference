@@ -1,0 +1,36 @@
+:root {
+  --bg: #f7f9fb; --fg: #1d232a; --muted: #56636f; --line: #d5dee6; --accent: #0f7a5a;
+  --error: #b42318; --card: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #11161b; --fg: #e6edf3; --muted: #9aa7b3; --line: #2b3640; --accent: #3ccf9c;
+          --error: #ff8a80; --card: #19212a; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+       font: 16px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 40px; }
+h1 { margin: 0 0 8px; font-size: 1.8rem; }
+.lead { color: var(--muted); max-width: 70ch; }
+#status { padding: 10px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); }
+#status[data-kind="error"] { color: var(--error); border-color: var(--error); }
+#status[data-kind="ok"] { color: var(--accent); }
+.layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; margin-top: 16px; }
+@media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+[role="tablist"] { display: flex; gap: 8px; margin-bottom: 12px; }
+button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line);
+         background: var(--bg); color: var(--fg); cursor: pointer; }
+button:disabled { opacity: .5; cursor: progress; }
+[role="tab"][aria-selected="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+canvas { display: block; width: 100%; height: auto; margin-top: 12px; border-radius: 8px; background: #000; }
+canvas:not([width]) { display: none; }
+.file { display: grid; gap: 6px; }
+#verdict { font-size: 1.6rem; font-weight: 600; margin: 4px 0 12px; }
+#verdict[data-kind="abstain"] { color: var(--muted); font-size: 1.2rem; }
+#top { padding-left: 0; list-style: none; margin: 0; }
+#top li { display: grid; grid-template-columns: 2ch 1fr 6ch; gap: 10px; align-items: center; margin: 6px 0; }
+#top meter { width: 100%; }
+h3 { font-size: 1rem; color: var(--muted); margin: 0 0 4px; }
+footer { color: var(--muted); font-size: .9rem; margin-top: 24px; }
+a { color: var(--accent); }

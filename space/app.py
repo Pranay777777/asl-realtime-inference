@@ -7,57 +7,32 @@ Space next to this file (models/ is not in the GitHub repo).
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import cv2
 import gradio as gr
 import mediapipe as mp
 import numpy as np
-import onnxruntime as ort
+
+from pipeline import Recognizer, box_from_points, centre_box
 
 HERE = Path(__file__).parent
-MODELS = HERE / "models"
-SIZE = 160  # the model's input is 160x160 RGB, 0-255; it rescales internally
-PAD = 1.4  # crop margin around the hand, as in predict.py
-MOTION_LETTERS = {"J", "Z"}  # signed with movement; a single frame cannot show them
-
-session = ort.InferenceSession(str(MODELS / "asl_int8.onnx"), providers=["CPUExecutionProvider"])
-INPUT = session.get_inputs()[0].name
-LABELS = {int(k): v for k, v in json.loads((MODELS / "labels.json").read_text()).items()}
-_cal = json.loads((MODELS / "calibration.json").read_text())
-TEMPERATURE, THRESHOLD = float(_cal["temperature"]), float(_cal["threshold"])
+rec = Recognizer(HERE / "models")
+LABELS, TEMPERATURE, THRESHOLD = rec.labels, rec.temperature, rec.threshold
 
 hands = mp.solutions.hands.Hands(
     static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5
 )
 
 
-def calibrated(probs: np.ndarray) -> np.ndarray:
-    """Softmax as if the logits were divided by the fitted temperature (calibrate.py)."""
-    logits = np.log(np.clip(probs, 1e-12, 1.0)) / TEMPERATURE
-    e = np.exp(logits - logits.max())
-    return e / e.sum()
-
-
-def hand_box(rgb: np.ndarray) -> tuple[int, int, int, int] | None:
+def hand_box(rgb: np.ndarray):
     """Square box around the first detected hand, padded and clipped to the frame."""
     found = hands.process(rgb)
     if not found.multi_hand_landmarks:
         return None
     h, w = rgb.shape[:2]
     pts = found.multi_hand_landmarks[0].landmark
-    xs, ys = [p.x * w for p in pts], [p.y * h for p in pts]
-    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
-    half = max(max(xs) - min(xs), max(ys) - min(ys)) * PAD / 2
-    x0, y0 = int(max(0, cx - half)), int(max(0, cy - half))
-    x1, y1 = int(min(w, cx + half)), int(min(h, cy + half))
-    return (x0, y0, x1, y1) if x1 - x0 > 10 and y1 - y0 > 10 else None
-
-
-def classify(rgb_crop: np.ndarray) -> np.ndarray:
-    x = cv2.resize(rgb_crop, (SIZE, SIZE), interpolation=cv2.INTER_AREA).astype(np.float32)
-    return calibrated(session.run(None, {INPUT: x[None]})[0][0])
+    return box_from_points([p.x * w for p in pts], [p.y * h for p in pts], w, h)
 
 
 def recognise(frame: np.ndarray | None, fallback: bool = False):
@@ -72,23 +47,13 @@ def recognise(frame: np.ndarray | None, fallback: bool = False):
         # Uploads only: MediaPipe misses some close, dark crops (like the training photos), so
         # read the centre square, as predict.py does for single images, and say so. Live
         # frames never guess - an empty scene can still score high on some letter.
-        h, w = rgb.shape[:2]
-        side = min(h, w)
-        x0, y0 = (w - side) // 2, (h - side) // 2
-        box = (x0, y0, x0 + side, y0 + side)
+        box = centre_box(rgb.shape[1], rgb.shape[0])
         note = " - no hand detected, read the centre of the frame"
     x0, y0, x1, y1 = box
-    probs = classify(rgb[y0:y1, x0:x1])
+    probs = rec.probs(rgb, box)
     top = np.argsort(probs)[::-1][:3]
     scores = {LABELS[int(i)]: float(probs[i]) for i in top}
-    best, conf = LABELS[int(top[0])], float(probs[top[0]])
-    if conf < THRESHOLD:
-        verdict = f"Not confident (best guess {best}, {conf:.0%})"
-    elif best in MOTION_LETTERS:
-        verdict = f"{best} ({conf:.0%}) - J and Z involve motion; this demo reads still frames"
-    else:
-        verdict = f"{best} ({conf:.0%})"
-    verdict += note
+    verdict = rec.verdict(probs) + note
     shown = rgb.copy()
     cv2.rectangle(shown, (x0, y0), (x1, y1), (0, 200, 120), 3)
     return shown, verdict, scores

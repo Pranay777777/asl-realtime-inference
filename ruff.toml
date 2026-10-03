@@ -5,3 +5,7 @@ extend-exclude = ["venv", "data", "models"]
 [lint]
 select = ["E", "F", "I"]
 ignore = ["E501", "E701", "E702", "E741"]  # long lines and compact one-liners are the house style
+
+[lint.isort]
+# space/ scripts import their sibling modules directly
+known-first-party = ["pipeline", "stage", "parity"]

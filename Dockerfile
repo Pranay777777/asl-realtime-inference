@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
 WORKDIR /app
 COPY space/requirements.txt .
 RUN pip install -r requirements.txt gradio==6.29.0
-COPY space/app.py .
+COPY space/app.py space/pipeline.py ./
 
 RUN useradd --create-home --uid 10001 app
 USER app

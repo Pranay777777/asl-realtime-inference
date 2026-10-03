@@ -1,46 +1,53 @@
-"""Create or update the Hugging Face Space and upload the app plus the model files.
+"""Publish the static Space (free tier): the browser app plus the model files.
 
     hf auth login                                   # once, in your own terminal
+    cd space && npm install                         # once: headless browser for the gate
     python space/deploy.py [--repo 7Pranay77/asl-alphabet-recognizer]
 
-Only the three files the app reads are uploaded from models/; nothing else leaves the
-machine. Re-running updates the Space in place.
+The parity gate (space/parity.py) runs first and must pass. Only the files the page serves
+are uploaded - the web files from space/static/ and asl_int8.onnx + calibration.json from
+models/ - plus the Space README. Re-running updates the Space in place.
 """
 
+from __future__ import annotations
+
 import argparse
+import shutil
 from pathlib import Path
 
 from huggingface_hub import CommitOperationAdd, HfApi
 
-ROOT = Path(__file__).resolve().parent.parent
-APP_FILES = ["app.py", "requirements.txt", "README.md"]
-MODEL_FILES = ["asl_int8.onnx", "labels.json", "calibration.json"]
+import parity
+from stage import SPACE, stage
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", default="7Pranay77/asl-alphabet-recognizer")
     args = ap.parse_args()
+
+    if parity.main() != 0:
+        print("parity gate failed - not deploying")
+        return 1
+
+    site = SPACE / ".stage" / "deploy"
+    shutil.rmtree(site, ignore_errors=True)
+    files = stage(site) + [Path(shutil.copy2(SPACE / "README.md", site / "README.md"))]
+
     api = HfApi()
     print(f"signed in as {api.whoami()['name']}")
-    api.create_repo(args.repo, repo_type="space", space_sdk="gradio", exist_ok=True)
-    ops = [(ROOT / "space" / f, f) for f in APP_FILES]
-    ops += [(ROOT / "models" / f, f"models/{f}") for f in MODEL_FILES]
-    for local, _ in ops:
-        if not local.is_file():
-            raise SystemExit(f"missing {local}")
-
+    api.create_repo(args.repo, repo_type="space", space_sdk="static", exist_ok=True)
     api.create_commit(
         repo_id=args.repo,
         repo_type="space",
-        operations=[
-            CommitOperationAdd(path_in_repo=remote, path_or_fileobj=str(local))
-            for local, remote in ops
-        ],
-        commit_message="Deploy app and INT8 model",
+        operations=[CommitOperationAdd(path_in_repo=f.name, path_or_fileobj=str(f)) for f in files],
+        commit_message="Deploy static app and INT8 model",
     )
+    for f in files:
+        print(f"uploaded {f.name} ({f.stat().st_size:,} bytes)")
     print(f"https://huggingface.co/spaces/{args.repo}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
